@@ -1,0 +1,26 @@
+[project]
+name = "comfyui-kivi-nodes"
+description = "A collection of custom nodes for ComfyUI, focusing on video loop analysis and processing."
+version = "0.1.0"
+authors = [
+    {name = "Kivi", email = "your.email@example.com"}
+]
+readme = "README.md"
+license = {text = "MIT"}
+classifiers = [
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Topic :: Multimedia :: Video",
+]
+dependencies = []
+
+[project.urls]
+Repository = "https://github.com/yourusername/ComfyUI_Kivi_Nodes"
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
+ignore = []

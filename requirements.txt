@@ -1,0 +1,9 @@
+# ComfyUI Kivi Nodes Requirements
+#
+# Note: core dependencies like torch, numpy, and pillow are 
+# assumed to be provided by the ComfyUI environment.
+#
+# Only add extra libraries here if your nodes need them.
+
+# Example:
+# scipy>=1.10.0

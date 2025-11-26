@@ -1,0 +1,154 @@
+{
+  "LoopDetectExtract": {
+    "display_name": "🔁 Loop Detect & Extract",
+    "description": "**Loop Detection and Extraction Node**\n\nAutomatically detects loop patterns in video frame sequences using advanced FFT autocorrelation analysis.\n\n**Key Features:**\n• GPU-accelerated processing with automatic memory management\n• Seam detection for full-loop videos (first-last frame matching)\n• Motion-based scoring to suppress micro-loops\n• Multi-factor period selection with length preference\n• Robust confidence scoring using IQR statistics\n\n**Use Cases:**\n• Extract perfect loops from long videos\n• Detect animation cycles\n• Find repeating motion patterns\n• Optimize loop start points for seamless playback\n\n**Output:**\n• Loop segment with optimized boundaries\n• Detailed analysis report with confidence scores",
+    "inputs": {
+      "frames": {
+        "name": "Input Frames",
+        "tooltip": "**Input image sequence** in ComfyUI IMAGE format.\n\n• Format: (batch, height, width, channels)\n• Value range: [0, 1] (float)\n• Minimum: 2 frames required\n• Recommended: 30+ frames for reliable detection"
+      },
+      "confidence_threshold": {
+        "name": "Confidence Threshold",
+        "tooltip": "**Minimum confidence score to accept detected loop**\n\n• Range: 0.0 - 1.0\n• Default: 0.55 (balanced)\n• Lower (0.3-0.4): Accept weaker patterns\n• Higher (0.6-0.8): Require stronger evidence\n• If below threshold, returns all frames unchanged\n\n**Interpretation:**\n• 0.3-0.4: Good loop (minor imperfections)\n• 0.4-0.5: Excellent loop (high quality)\n• 0.5+: Perfect loop (rare)"
+      },
+      "min_period": {
+        "name": "Min Period",
+        "tooltip": "**Minimum loop period in frames**\n\n• Default: 24 frames (~1 second at 24fps)\n• Prevents detection of micro-loops (e.g., 2-8 frame jitter)\n• Adjust based on your content:\n  - Fast action: 15-20 frames\n  - Normal motion: 24-40 frames\n  - Slow animation: 40-60 frames"
+      },
+      "max_period": {
+        "name": "Max Period",
+        "tooltip": "**Maximum loop period in frames**\n\n• Default: 300 frames (~12 seconds at 24fps)\n• Should be less than total frame count\n• Larger values = slower processing\n• Recommended: N/2 where N is total frames"
+      },
+      "analysis_stride": {
+        "name": "Analysis Stride",
+        "tooltip": "**Frame sampling stride for analysis**\n\n• Default: 2 (analyze every 2nd frame)\n• Range: 1-8\n• Lower = More accurate, slower\n• Higher = Faster, less precise\n\n**Recommendations:**\n• 1: Maximum accuracy (slow)\n• 2: Good balance (recommended)\n• 4: Fast preview mode\n• 8: Very fast, rough estimate"
+      },
+      "analysis_size": {
+        "name": "Analysis Size",
+        "tooltip": "**Target resolution for analysis**\n\n• Default: 256px\n• Frames are downscaled to this size for speed\n• Does NOT affect output quality\n• Higher = more accurate but slower\n\n**Recommendations:**\n• 128: Very fast, may miss details\n• 256: Good balance (recommended)\n• 384: High accuracy\n• 512: Maximum detail (slow)"
+      },
+      "seam_threshold": {
+        "name": "Seam Threshold",
+        "tooltip": "**First-last frame similarity threshold**\n\n• Range: 0.0 - 1.0\n• Default: 0.85 (strict)\n• Triggers full-loop detection when exceeded\n\n**Use case:**\nDetects videos where the entire sequence forms one loop (e.g., 122-frame rotation that repeats).\n\n• 0.80: More lenient (minor differences OK)\n• 0.85: Balanced (recommended)\n• 0.90: Strict (near-perfect match required)"
+      },
+      "min_pairs": {
+        "name": "Min Sample Pairs",
+        "tooltip": "**Minimum sample pairs for statistical reliability**\n\n• Default: 12\n• Filters out periods with insufficient data\n• Higher = more conservative, rejects unstable candidates\n\n**Formula:** pairs = N - period\n• Short videos: 8-10\n• Normal videos: 12-16\n• Long videos: 20-24"
+      },
+      "prefer_longer_cycles": {
+        "name": "Prefer Longer",
+        "tooltip": "**Prefer longer periods when scores are close**\n\n• Default: True (enabled)\n• Helps avoid micro-loop false positives\n• When scores differ by < 5%, selects the longer period\n\n**Example:**\n• 8-frame micro-jitter: score = 0.30\n• 90-frame real loop: score = 0.28\n→ With this enabled, selects 90-frame loop"
+      },
+      "length_bias": {
+        "name": "Length Bias Strength",
+        "tooltip": "**Preference strength for longer periods**\n\n• Range: 0.0 - 0.2\n• Default: 0.05 (subtle)\n• Adds small bonus to longer period scores\n\n• 0.00: No bias (pure score-based)\n• 0.05: Subtle preference (recommended)\n• 0.10: Moderate preference\n• 0.15+: Strong preference (may miss short loops)"
+      },
+      "motion_weight": {
+        "name": "Motion Weight",
+        "tooltip": "**Weight for motion periodicity in scoring**\n\n• Range: 0.0 - 1.0\n• Default: 0.25 (25% motion, 75% appearance)\n• Suppresses static or micro-motion false loops\n\n**How it works:**\nAnalyzes frame-to-frame motion energy:\n• High motion periodicity = real loop\n• Low motion = static or jitter\n\n• 0.0: Appearance only (ignores motion)\n• 0.25: Balanced (recommended)\n• 0.5: Equal weight\n• 0.75+: Motion-dominant"
+      }
+    },
+    "outputs": {
+      "0": {
+        "name": "Loop Frames",
+        "tooltip": "**Detected loop segment**\n\n• Optimized loop boundaries\n• Can be directly used for looping playback\n• If no loop detected, returns all input frames"
+      },
+      "1": {
+        "name": "Loop Start",
+        "tooltip": "**Starting frame index of the loop**\n\n• Zero-based index\n• 0 = loop starts at first frame\n• Optimized for minimal seam visibility"
+      },
+      "2": {
+        "name": "Loop Period",
+        "tooltip": "**Length of the loop in frames**\n\n• Number of frames in the detected cycle\n• Equal to total frames if no loop detected\n• Use for timing calculations (e.g., period/fps = loop duration)"
+      },
+      "3": {
+        "name": "Confidence",
+        "tooltip": "**Loop detection confidence score**\n\n• Range: 0.0 - 1.0\n• Higher = stronger loop pattern detected\n\n**Interpretation:**\n• < 0.3: Weak or no loop\n• 0.3-0.4: Good loop\n• 0.4-0.5: Excellent loop\n• 0.5+: Perfect loop\n• 0.0: No loop detected (below threshold)"
+      },
+      "4": {
+        "name": "Analysis Report",
+        "tooltip": "**Detailed analysis report (text)**\n\nContains:\n• Detection status and confidence\n• Loop boundaries (start, period, end)\n• Top candidate periods with scores\n• Reason for failure (if not detected)\n• Seam detection info (if applicable)\n\nUseful for:\n• Debugging detection issues\n• Understanding candidate selection\n• Tuning parameters"
+      }
+    }
+  },
+  "VideoFrameExtractor": {
+    "display_name": "📹 Video Frame Extractor",
+    "description": "**Video Frame Extractor Node**\n\nExtracts edge frames in reversed order and generates VAE mask and masked video.\n\n**Key Features:**\n• Extract crossfade segments (reversed order)\n• Generate continuous white mask regions (for VAE reconstruction)\n• Support discarding edge frames for VAE reconstruction\n• Customizable fill color\n\n**Use Cases:**\n• Optimize loop videos with crossfade\n• VAE-based video frame reconstruction\n• Video edge transition optimization",
+    "inputs": {
+      "frames": {
+        "name": "Input Frames",
+        "tooltip": "**Input image sequence** in ComfyUI IMAGE format.\n\n• Format: (batch, height, width, channels)\n• Value range: [0, 1] (float)"
+      },
+      "crossfade_frames": {
+        "name": "Crossfade Frames",
+        "tooltip": "**Number of frames to extract from each edge for crossfade**\n\n• Default: 10\n• Range: 0-1000\n• Output in reversed order (tail first, head last)"
+      },
+      "mask_frames": {
+        "name": "Mask Frames",
+        "tooltip": "**Number of frames in middle mask region**\n\n• Default: 0\n• Range: 0-1000\n• Filled with gray, marked for VAE reconstruction"
+      },
+      "discard_frames": {
+        "name": "Discard Frames",
+        "tooltip": "**Number of frames to 'eat' from each end of crossfade segments**\n\n• Default: 0\n• Range: 0-1000\n• Removed from both ends of crossfade_frames\n• Actual original video frames = crossfade - discard\n• Discarded portions filled with gray for VAE reconstruction"
+      },
+      "fill_color": {
+        "name": "Fill Color",
+        "tooltip": "**Fill color (hexadecimal)**\n\n• Default: #7F7F7F (medium gray)\n• Format: #RRGGBB\n• Used for discard and mask regions"
+      }
+    },
+    "outputs": {
+      "0": {
+        "name": "Head Crossfade",
+        "tooltip": "**Head crossfade segment (b)** (original video)\n\n• Count: crossfade_frames\n• Used for crossfade"
+      },
+      "1": {
+        "name": "Tail Crossfade",
+        "tooltip": "**Tail crossfade segment (d)** (original video)\n\n• Count: crossfade_frames\n• Used for crossfade"
+      },
+      "2": {
+        "name": "Middle Segment",
+        "tooltip": "**Middle portion (c)** (original video)\n\n• Not included in mask and masked_video\n• Original video middle segment"
+      },
+      "3": {
+        "name": "Mask",
+        "tooltip": "**VAE Mask**\n\n• Order: d + e + mask + a + b\n• Black (0.0): d and b (preserve)\n• White (1.0): e+mask+a (continuous reconstruction)\n• Shape: (N, H, W)"
+      },
+      "4": {
+        "name": "Masked Video",
+        "tooltip": "**VAE Input Video**\n\n• Order: d + e + mask + a + b\n• Original: d and b\n• Gray: e+mask+a (continuous fill)\n• Shape: (N, H, W, 3)"
+      }
+    }
+  },
+  "LoopVideoCrossfade": {
+    "display_name": "🔄 Loop Video Crossfade",
+    "description": "**Loop Video Crossfade Node**\n\nSeamlessly merges two videos using crossfade technique, making the output itself loopable.\n\n**Key Features:**\n• Intelligent video decomposition and recombination\n• Smooth crossfade transitions\n• Seamlessly loopable output\n\n**Use Cases:**\n• Merge loop video segments\n• Eliminate loop seams\n• Create infinite loop animations",
+    "inputs": {
+      "video1": {
+        "name": "Video 1",
+        "tooltip": "**First video sequence**\n\n• Format: ComfyUI IMAGE\n• Requires at least crossfade_frames × 2 frames"
+      },
+      "video2": {
+        "name": "Video 2",
+        "tooltip": "**Second video sequence**\n\n• Format: ComfyUI IMAGE\n• Requires at least crossfade_frames × 2 frames\n• Must match video1 dimensions"
+      },
+      "crossfade_frames": {
+        "name": "Crossfade Frames",
+        "tooltip": "**Number of frames for crossfade**\n\n• Default: 10 frames\n• Range: 1-100\n• Larger values = smoother transitions\n• Recommended: 10 frames for 24fps (~0.4 seconds)"
+      },
+      "enable_crossfade": {
+        "name": "Enable Crossfade",
+        "tooltip": "**Enable crossfade blending**\n\n• Default: True (enabled)\n• Enabled: Crossfade in overlap regions (g+b+h+e)\n• Disabled: Direct concat, remove a and c (f+b+d+e)"
+      }
+    },
+    "outputs": {
+      "0": {
+        "name": "Merged Video",
+        "tooltip": "**Merged video output**\n\n• Can be looped seamlessly\n• Returns video1 if inputs are invalid"
+      },
+      "1": {
+        "name": "Report",
+        "tooltip": "**Detailed processing report**\n\nContains:\n• Video decomposition info\n• Crossfade frame count\n• Output frame count and order\n• Error messages (if any)"
+      }
+    }
+  }
+}
