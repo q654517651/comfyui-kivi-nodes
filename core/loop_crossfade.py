@@ -7,7 +7,7 @@ import torch
 from typing import Tuple
 
 
-class LoopVideoCrossfade:
+class VideoCrossfader:
     """
     循环视频交叉溶解
     
@@ -16,46 +16,46 @@ class LoopVideoCrossfade:
     
     DESCRIPTION = "通过交叉溶解无缝拼接两个视频序列，输出可循环播放的视频。"
     
-    @classmethod
-    def INPUT_TYPES(cls):
-        return {
-            "required": {
-                "video1": (
-                    "IMAGE",
-                    {
-                        "tooltip": "第一个视频序列"
-                    }
-                ),
-                "video2": (
-                    "IMAGE",
-                    {
-                        "tooltip": "第二个视频序列"
-                    }
-                ),
-                "crossfade_frames": (
-                    "INT",
-                    {
-                        "default": 10,
-                        "min": 1,
-                        "max": 100,
-                        "step": 1,
-                        "tooltip": "交叉溶解的帧数"
-                    }
-                ),
-                "enable_crossfade": (
-                    "BOOLEAN",
-                    {
-                        "default": True,
-                        "tooltip": "是否启用交叉溶解。关闭时直接拼接，移除首尾重叠帧"
-                    }
-                ),
-            }
-        }
-    
-    RETURN_TYPES = ("IMAGE", "STRING")
-    RETURN_NAMES = ("merged_video", "report")
-    FUNCTION = "crossfade_merge"
-    CATEGORY = "kivi_nodes"
+    # @classmethod
+    # def INPUT_TYPES(cls):
+    #     return {
+    #         "required": {
+    #             "video1": (
+    #                 "IMAGE",
+    #                 {
+    #                     "tooltip": "第一个视频序列"
+    #                 }
+    #             ),
+    #             "video2": (
+    #                 "IMAGE",
+    #                 {
+    #                     "tooltip": "第二个视频序列"
+    #                 }
+    #             ),
+    #             "crossfade_frames": (
+    #                 "INT",
+    #                 {
+    #                     "default": 10,
+    #                     "min": 1,
+    #                     "max": 100,
+    #                     "step": 1,
+    #                     "tooltip": "交叉溶解的帧数"
+    #                 }
+    #             ),
+    #             "enable_crossfade": (
+    #                 "BOOLEAN",
+    #                 {
+    #                     "default": True,
+    #                     "tooltip": "是否启用交叉溶解。关闭时直接拼接，移除首尾重叠帧"
+    #                 }
+    #             ),
+    #         }
+    #     }
+    #
+    # RETURN_TYPES = ("IMAGE", "STRING")
+    # RETURN_NAMES = ("merged_video", "report")
+    # FUNCTION = "crossfade_merge"
+    # CATEGORY = "kivi_nodes"
     
     def crossfade_merge(
         self,
@@ -171,12 +171,12 @@ video2: {N2} 帧
         return (merged, report)
 
 
-# 节点注册
-NODE_CLASS_MAPPINGS = {
-    "LoopVideoCrossfade": LoopVideoCrossfade,
-}
-
-NODE_DISPLAY_NAME_MAPPINGS = {
-    "LoopVideoCrossfade": "🔄 循环视频交叉溶解",
-}
+# # 节点注册
+# NODE_CLASS_MAPPINGS = {
+#     "LoopVideoCrossfade": LoopVideoCrossfade,
+# }
+#
+# NODE_DISPLAY_NAME_MAPPINGS = {
+#     "LoopVideoCrossfade": "🔄 循环视频交叉溶解",
+# }
 
